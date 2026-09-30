@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Matriz de Evaluación de Prospectos a Terceros</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .header-card { background: linear-gradient(135deg, #464591 0%, #7ebd26 100%); color: white; border-radius: 10px; padding: 25px; margin-bottom: 25px; }
+    .card-section { border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .section-title { color: #464591; font-weight: bold; border-bottom: 2px solid #7ebd26; padding-bottom: 8px; margin-bottom: 15px; }
+    .file-upload-box { display: none; background-color: #f8f9fa; border: 1px dashed #7ebd26; padding: 10px; border-radius: 6px; margin-top: 8px; }
+    .btn-submit { background-color: #464591; color: white; padding: 12px 30px; font-weight: bold; border: none; }
+    .btn-submit:hover { background-color: #35346e; color: white; }
+  </style>
+</head>
+<body>
+
+<div class="container my-5" style="max-width: 950px;">
+  
+  <!-- ENCABEZADO ACTUALIZADO -->
+  <div class="header-card text-center">
+    <h2>Matriz de Evaluación de Prospectos a Terceros:</h2>
+    <p class="mb-0">Area de Seguridad de Terceros Grupo Coppel</p>
+  </div>
+
+  <form id="dynamicForm" onsubmit="handleSubmit(event)">
+    
+    <!-- SECCIÓN 1: DATOS GENERALES -->
+    <div class="card card-section">
+      <div class="card-body">
+        <h4 class="section-title">1. Información General del Proveedor</h4>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label font-weight-bold">Nombre de la empresa - Razón Social *</label>
+            <input type="text" id="empresa" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label font-weight-bold">Nombre de quien realizó el llenado *</label>
+            <input type="text" id="nombre" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label font-weight-bold">Correo Electrónico *</label>
+            <input type="email" id="email" class="form-control" required>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 2: MATRIZ DE PREGUNTAS Y CONTROLES -->
+    <div class="card card-section">
+      <div class="card-body">
+        <h4 class="section-title">2. Cuestionario de Evaluación y Evidencias</h4>
+        <div id="questionsContainer"></div>
+      </div>
+    </div>
+
+    <div class="text-end mb-5">
+      <button type="submit" id="btnSubmit" class="btn btn-submit rounded-pill">
+        <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+        Enviar Evaluación
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  // Cuestionario extraído de las especificaciones del PDF recibido
+  const questionnaire = [
+    {
+      category: "2.- CARACTERÍSTICAS GENERALES",
+      questions: [
+        { id: "q2_0", label: "2.0: ¿El proveedor adopta marcos o estándares de seguridad reconocidos (aunque no esté certificados)?", type: "checkbox", options: ["Cobit", "ISO27001", "ITIL", "PCI", "SOC 1 / SOC2", "SOX", "NIST"], customFileTrigger: true },
+        { id: "q2_1", label: "2.1: ¿Existen controles para proteger físicamente los activos críticos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q2_2", label: "2.2: ¿El uso de herramientas de Inteligencia artificial está regulado y autorizado por la organización?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q2_3", label: "2.3: ¿Se evita el uso de información sensible o confidencial en herramientas de IA públicas?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q2_4", label: "2.4: ¿Cuenta el proveedor con un protocolo documentado para la validación humana de los resultados generados por IA antes de su integración en procesos críticos del cliente?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q2_5", label: "2.5: ¿Se monitorea activamente la red y los sistemas para detectar el uso no autorizado de herramientas de IA?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    },
+    {
+      category: "3.- CONECTIVIDAD",
+      questions: [
+        { id: "q3_1", label: "3.1: ¿Se requiere algún tipo de conectividad?", type: "radio", options: ["Si", "No"] },
+        { id: "q3_2", label: "3.2: Justificación:", type: "text" }
+      ]
+    },
+    {
+      category: "4.- CONTROLES GENERALES DE SEGURIDAD",
+      questions: [
+        { id: "q4_1", label: "4.1: ¿Cuenta con un proceso formal para identificar, evaluar y tratar riesgos de seguridad?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q4_2", label: "4.2: ¿Existe una estructura de gobierno de seguridad (roles, responsabilidades, comités)?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q4_3", label: "4.3: ¿Se realizan programas de concientización en seguridad para el personal?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q4_4", label: "4.4: ¿Las excepciones a controles de seguridad se gestionan, documentan y aprueban formalmente?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q4_5", label: "4.5: ¿Se definen y mantienen configuraciones seguras estándar para sistemas y dispositivos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q4_6", label: "4.6: ¿Se aplican prácticas de hardening en sistemas y plataformas?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q4_7", label: "4.7: ¿Se realizan evaluaciones de seguridad por tercero o auditorías externas?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q4_8", label: "4.8: ¿Se consideran fuentes de inteligencia de amenazas para anticipar riesgos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q4_9", label: "4.9: ¿El proveedor evalúa la seguridad de sus propios terceros?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    },
+    {
+      category: "5.- CONTROLES DE GESTIÓN DE ACTIVOS",
+      questions: [
+        { id: "q5_1", label: "5.1: ¿Mantiene un inventario actualizado de sus activos de información y tecnológicos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q5_2", label: "5.2: ¿Cada activo tiene un responsable o dueño definido?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q5_3", label: "5.3: ¿El inventario se actualiza de forma periódica o automática?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q5_4", label: "5.4: ¿Se cuentan con mecanismos para identificar activos nuevos o no registrados?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q5_5", label: "5.5: ¿Se aplican controles de seguridad según el tipo y criticidad del activo?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q5_6", label: "5.6: ¿Existe un proceso para la eliminación o disposición segura de activos?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    },
+    {
+      category: "6.- CONTROLES DE ACCESOS",
+      questions: [
+        { id: "q6_1", label: "6.1: ¿Cuenta con un proceso formal para la creación, modificación y baja de usuarios?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_2", label: "6.2: ¿Los accesos se asignan bajo el principio de mínimo privilegio?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_3", label: "6.3: ¿Se evita que un usuario tenga accesos incompatibles o conflictivos (Segregación de funciones)?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_4", label: "6.4: ¿Se implementa autenticación robusta (MFA) para accesos críticos o remotos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_5", label: "6.5: ¿Existen políticas de contraseñas seguras (longitud, complejidad y expiración)?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_6", label: "6.6: ¿Se realizan recertificaciones periódicas de accesos por parte de los dueños?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_7", label: "6.7: ¿Los accesos privilegiados están controlados, monitoreados y restringidos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_8", label: "6.8: ¿Se registran y monitorean los accesos y actividades de los usuarios?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_9", label: "6.9: ¿Los accesos privilegiados están controlados, monitoreados y restringidos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_10", label: "6.10: ¿Se eliminan o deshabilitan los accesos de forma inmediata cuando ya no son necesarios?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_11", label: "6.11: ¿Se implementan controles adicionales para sistemas críticos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q6_12", label: "6.12: ¿El acceso a herramientas de IA está restringido y controlado?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    },
+    {
+      category: "7.- CONTROLES DE MECANISMOS DE CIFRADO",
+      questions: [
+        { id: "q7_1", label: "7.1: ¿La información sensible se cifra en reposo y en tránsito?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q7_2", label: "7.2: Protocolo de cifrado en:", type: "checkbox", options: ["Redes de comunicación", "Aplicaciones y Servicios Web", "Base de Datos", "No Aplica", "No"], isQ72: true },
+        { id: "q7_3", label: "7.3: ¿El acceso a las llaves de cifrado está restringido y controlado?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q7_4", label: "7.4: ¿Los respaldos de información están cifrados?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q7_5", label: "7.5: ¿Se utilizan algoritmos y estándares de cifrado reconocidos y vigentes? (Ej. AES de 256 bits)", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q7_6", label: "7.6: ¿Se gestionan adecuadamente los certificados digitales (vigencia, renovación)?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    },
+    {
+      category: "8.- CONTROLES DE SEGURIDAD DE OPERACIONES",
+      questions: [
+        { id: "q8_1", label: "8.1: ¿Existen procedimientos documentados para la operación de los sistemas?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_2", label: "8.2: ¿Cuentan con un proceso formal para la gestión de cambios en sistemas?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_3", label: "8.3: ¿Se monitorean los sistemas para detectar fallas o eventos de seguridad?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_4", label: "8.4: ¿Existe un proceso formal para la atención de incidentes de seguridad?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_5", label: "8.5: ¿Se realizan respaldos periódicos de la información?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_6", label: "8.6: ¿Se prueban regularmente los respaldos para asegurar su recuperación?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_7", label: "8.7: ¿Se encuentran separados los ambientes de desarrollo, pruebas y producción?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_8", label: "8.8: ¿Se generan y resguardan logs de las actividades relevantes de los sistemas críticos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_9", label: "8.9: ¿Se implementan controles para prevenir, detectar y responder a malware?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_10", label: "8.10: ¿Se monitorea la capacidad y desempeño de los sistemas?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_11", label: "8.11: ¿Existen planes para asegurar la continuidad del servicio ante fallas?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q8_12", label: "8.12: ¿Se evalúan los riesgos de seguridad antes de implementar soluciones de IA?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    },
+    {
+      category: "9.- CONTROLES DE SEGURIDAD EN LAS COMUNICACIONES",
+      questions: [
+        { id: "q9_1", label: "9.1: ¿Cuentas con una política de seguridad en redes?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q9_2", label: "9.2: ¿Cuentas con redes segmentadas y con los controles de seguridad, incluyendo NAC (Network Access Control)?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q9_3", label: "9.3: ¿Los servicios críticos están implementados en un esquema de zona desmilitarizada DMZ?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q9_4", label: "9.4: ¿Utiliza firewalls en conexiones de red internas y externas?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q9_5", label: "9.5: ¿Tus usuarios móviles y externos se conectan a tus servicios de red por VPN?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q9_6", label: "9.6: ¿Existe un centro de Operaciones para la administración y monitoreo de los servicios de red?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q9_7", label: "9.7: ¿Tienen implementados sistemas de detección de intrusos (IDS) o sistemas de prevención de intrusos (IPS)?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    },
+    {
+      category: "10.- CONTROLES DE ADQUISICIÓN, DESARROLLO Y MANTENIMIENTO DE SISTEMAS",
+      questions: [
+        { id: "q10_1", label: "10.1: ¿Se integran controles de seguridad durante el desarrollo de sistemas?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q10_2", label: "10.2: ¿Se realizan evaluaciones de seguridad antes de liberar sistemas a producción?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q10_3", label: "10.3: ¿Se realiza revisión de código fuente para identificar vulnerabilidades?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q10_4", label: "10.4: ¿Se ejecutan pruebas de seguridad (ej. escaneos, pruebas de penetración)?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q10_5", label: "10.5: ¿Se identifican y corrigen vulnerabilidades detectadas en aplicaciones?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q10_6", label: "10.6: ¿Se gestionan y actualizan las librerías de terceros utilizadas en el desarrollo?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q10_7", label: "10.7: ¿Se encuentran separados los ambientes de desarrollo, pruebas y producción?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q10_8", label: "10.8: ¿Se evalúan requisitos de seguridad al adquirir o implementar soluciones de terceros?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    },
+    {
+      category: "11.- CONTROLES DE GESTIÓN DE INCIDENTES DE SEGURIDAD",
+      questions: [
+        { id: "q11_1", label: "11.1: ¿Existe un proceso formal para la gestión de incidentes de seguridad?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q11_2", label: "11.2: ¿Los incidentes de seguridad son identificados y reportados oportunamente?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q11_3", label: "11.3: ¿Los incidentes se clasifican según su impacto y severidad?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q11_4", label: "11.4: ¿Se cuenta con procedimientos definidos (playbooks) para responder a incidentes?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q11_5", label: "11.5: ¿Existe un proceso de escalamiento para incidentes críticos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q11_6", label: "11.6: ¿Se documentan y registran los incidentes de seguridad?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q11_7", label: "11.7: ¿Se realiza análisis de causa raíz de los incidentes relevantes?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q11_8", label: "11.8: ¿Se definen canales de comunicación durante la gestión de incidentes?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q11_9", label: "11.9: ¿Se implementan acciones de mejora posteriores a los incidentes?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q11_10", label: "11.10: ¿Se realizan pruebas o simulacros del proceso de gestión de incidentes?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q11_11", label: "11.11: ¿Se informa por medio de un análisis forense o se notifica la información del incidente relacionado?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    },
+    {
+      category: "12.- CONTROLES DE CONTINUIDAD DEL SERVICIO",
+      questions: [
+        { id: "q12_1", label: "12.1: ¿El proveedor cuenta con un plan de continuidad de negocio (BCP)?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q12_2", label: "12.2: ¿Existe un plan de recuperación ante desastres (DRP) para los sistemas críticos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q12_3", label: "12.3: ¿Se ha realizado un análisis de impacto (BIA) al negocio para identificar los procesos críticos?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q12_4", label: "12.4: ¿Se han definido y documentado RTO y RPO para los servicios?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q12_5", label: "12.5: ¿Se realizan pruebas periódicas del BCP/DRP?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q12_6", label: "12.6: ¿Se realizan pruebas periódicas del BCP/DRP?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q12_7", label: "12.7: ¿Se cuenta con infraestructura alterna o redundante?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q12_8", label: "12.8: ¿Se monitorea y gestiona la disponibilidad de los servicios?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q12_9", label: "12.9: ¿Existe un proceso para la gestión de crisis?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q12_10", label: "12.10: ¿Los planes de continuidad se actualizan periódicamente?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    },
+    {
+      category: "13.- CONTROLES DE CUMPLIMIENTO",
+      questions: [
+        { id: "q13_1", label: "13.1: ¿El proveedor cumple con las leyes y regulaciones aplicables a su servicio?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q13_2", label: "13.2: ¿Se cumplen los requisitos de seguridad establecidos en el contrato o SLA?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q13_3", label: "13.3: ¿El proveedor se somete a auditorías internas y externas de seguridad?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q13_4", label: "13.4: ¿Se gestionan o corrigen oportunamente los hallazgos de auditoría?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q13_5", label: "13.5: ¿Cumple con normativas de protección de datos personales aplicables?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q13_6", label: "13.6: ¿Se gestionan o corrigen oportunamente los hallazgos de auditoría?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q13_7", label: "13.7: ¿El proveedor puede proporcionar evidencia de cumplimiento (certificaciones, reportes, controles)?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q13_8", label: "13.8: ¿Se da seguimiento continuo al cumplimiento de los requisitos legales y de seguridad?", type: "radio", options: ["Si", "No", "No aplica"] },
+        { id: "q13_9", label: "13.9: ¿Existen lineamientos para el uso ético y responsable de la inteligencia artificial?", type: "radio", options: ["Si", "No", "No aplica"] }
+      ]
+    }
+  ];
+
+  // Renderizado dinámico de la interfaz
+  document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('questionsContainer');
+    
+    questionnaire.forEach(cat => {
+      let catHtml = `<h5 class="mt-4 text-secondary border-bottom pb-2 fw-bold">${cat.category}</h5>`;
+      
+      cat.questions.forEach(q => {
+        catHtml += `<div class="mb-3 p-3 bg-light rounded border">
+          <label class="form-label d-block fw-bold">${q.label}</label>`;
+
+        if (q.type === 'radio' || q.type === 'checkbox') {
+          q.options.forEach(opt => {
+            const inputType = q.type;
+            const isQ20 = q.customFileTrigger ? 'true' : 'false';
+            const isQ72 = q.isQ72 ? 'true' : 'false';
+
+            catHtml += `
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="${inputType}" name="${q.id}" value="${opt}" id="${q.id}_${opt.replace(/\s+/g, '_')}" onchange="checkFileCondition('${q.id}', ${isQ20}, ${isQ72})">
+                <label class="form-check-label" for="${q.id}_${opt.replace(/\s+/g, '_')}">${opt}</label>
+              </div>`;
+          });
+
+          catHtml += `
+            <div id="file_box_${q.id}" class="file-upload-box mt-2">
+              <label class="form-label text-success small fw-bold">Adjuntar Documento de Soporte (PDF/ZIP/Imagen):</label>
+              <input type="file" id="file_${q.id}" class="form-control form-control-sm">
+            </div>`;
+        } else if (q.type === 'text') {
+          catHtml += `<input type="text" id="${q.id}" name="${q.id}" class="form-control">`;
+        }
+
+        catHtml += `</div>`;
+      });
+
+      container.innerHTML += catHtml;
+    });
+  });
+
+  // Evaluación de condiciones de carga de archivos de soporte
+  function checkFileCondition(qId, isQ20, isQ72) {
+    const box = document.getElementById(`file_box_${qId}`);
+    if (!box) return;
+
+    const checkedBoxes = Array.from(document.querySelectorAll(`input[name="${qId}"]:checked`)).map(el => el.value);
+
+    if (isQ20) {
+      // 2.0: Si selecciona cualquier estándar, se habilita el adjunto
+      box.style.display = checkedBoxes.length > 0 ? 'block' : 'none';
+    } else if (isQ72) {
+      // 7.2: Redes de comunicación / Aplicaciones y Servicios Web / Base de Datos activan adjunto
+      const validOptions = ["Redes de comunicación", "Aplicaciones y Servicios Web", "Base de Datos"];
+      const hasValidSelection = checkedBoxes.some(val => validOptions.includes(val));
+      box.style.display = hasValidSelection ? 'block' : 'none';
+    } else {
+      // Regla General: "Si" activa la carga de soporte
+      box.style.display = checkedBoxes.includes('Si') ? 'block' : 'none';
+    }
+  }
+
+  // Envío de Datos al Backend
+  async function handleSubmit(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('btnSubmit');
+    const spinner = document.getElementById('spinner');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    const formData = {
+      empresa: document.getElementById('empresa').value,
+      nombre: document.getElementById('nombre').value,
+      email: document.getElementById('email').value,
+      responses: {},
+      files: {}
+    };
+
+    for (const cat of questionnaire) {
+      for (const q of cat.questions) {
+        if (q.type === 'text') {
+          formData.responses[q.id] = document.getElementById(q.id).value;
+        } else {
+          const selected = Array.from(document.querySelectorAll(`input[name="${q.id}"]:checked`)).map(el => el.value);
+          formData.responses[q.id] = q.type === 'radio' ? (selected[0] || '') : selected;
+
+          const box = document.getElementById(`file_box_${q.id}`);
+          if (box && box.style.display === 'block') {
+            const fileInput = document.getElementById(`file_${q.id}`);
+            if (fileInput && fileInput.files.length > 0) {
+              const file = fileInput.files[0];
+              const bytes = await readFileAsBase64(file);
+              formData.files[q.id] = {
+                name: file.name,
+                mimeType: file.type,
+                bytes: bytes
+              };
+            }
+          }
+        }
+      }
+    }
+
+    google.script.run
+      .withSuccessHandler(res => {
+        alert(res.message);
+        document.getElementById('dynamicForm').reset();
+        document.querySelectorAll('.file-upload-box').forEach(b => b.style.display = 'none');
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+      })
+      .withFailureHandler(err => {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+      })
+      .processFormSubmission(formData);
+  }
+
+  function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+  }
+</script>
+</body>
+</html>
