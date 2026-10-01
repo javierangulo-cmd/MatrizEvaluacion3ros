@@ -18,7 +18,7 @@
 
 <div class="container my-5" style="max-width: 950px;">
   
-  <!-- ENCABEZADO ACTUALIZADO -->
+  <!-- ENCABEZADO CORPORATIVO -->
   <div class="header-card text-center">
     <h2>Matriz de Evaluación de Prospectos a Terceros:</h2>
     <p class="mb-0">Area de Seguridad de Terceros Grupo Coppel</p>
@@ -32,22 +32,26 @@
         <h4 class="section-title">1. Información General del Proveedor</h4>
         <div class="row g-3">
           <div class="col-md-6">
+            <label class="form-label font-weight-bold">Fecha *</label>
+            <input type="date" id="fecha" class="form-control" required>
+          </div>
+          <div class="col-md-6">
             <label class="form-label font-weight-bold">Nombre de la empresa - Razón Social *</label>
-            <input type="text" id="empresa" class="form-control" required>
+            <input type="text" id="empresa" class="form-control" placeholder="Ej. Empresa SA de CV" required>
           </div>
           <div class="col-md-6">
             <label class="form-label font-weight-bold">Nombre de quien realizó el llenado *</label>
-            <input type="text" id="nombre" class="form-control" required>
+            <input type="text" id="nombre" class="form-control" placeholder="Nombre completo" required>
           </div>
           <div class="col-md-6">
             <label class="form-label font-weight-bold">Correo Electrónico *</label>
-            <input type="email" id="email" class="form-control" required>
+            <input type="email" id="email" class="form-control" placeholder="correo@empresa.com" required>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- SECCIÓN 2: MATRIZ DE PREGUNTAS Y CONTROLES -->
+    <!-- SECCIÓN 2: CUESTIONARIO Y EVIDENCIAS -->
     <div class="card card-section">
       <div class="card-body">
         <h4 class="section-title">2. Cuestionario de Evaluación y Evidencias</h4>
@@ -66,7 +70,13 @@
 </div>
 
 <script>
-  // Cuestionario extraído de las especificaciones del PDF recibido
+  // CONFIGURACIÓN DE ENDPOINT: Reemplaza con la URL ejecutable de tu Apps Script Web App (termina en /exec)
+  const APPS_SCRIPT_URL = "https://script.google.com/a/macros/salevale.com/s/AKfycbxXRDt-zYZerQQCXEAYn2Rj9YE_T9bK0GQWoqoXjjCnB0sF0KOljjB_bBxiO9D7dW9c/exec";
+
+  // Autocompletar la fecha actual por defecto
+  document.getElementById('fecha').valueAsDate = new Date();
+
+  // Estructura completa extraída del PDF
   const questionnaire = [
     {
       category: "2.- CARACTERÍSTICAS GENERALES",
@@ -228,7 +238,7 @@
     }
   ];
 
-  // Renderizado dinámico de la interfaz
+  // Renderizado dinámico del DOM
   document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('questionsContainer');
     
@@ -247,8 +257,8 @@
 
             catHtml += `
               <div class="form-check form-check-inline">
-                <input class="form-check-input" type="${inputType}" name="${q.id}" value="${opt}" id="${q.id}_${opt.replace(/\s+/g, '_')}" onchange="checkFileCondition('${q.id}', ${isQ20}, ${isQ72})">
-                <label class="form-check-label" for="${q.id}_${opt.replace(/\s+/g, '_')}">${opt}</label>
+                <input class="form-check-input" type="${inputType}" name="${q.id}" value="${opt}" id="${q.id}_${opt.replace(/[^a-zA-Z0-9]/g, '_')}" onchange="checkFileCondition('${q.id}', ${isQ20}, ${isQ72})">
+                <label class="form-check-label" for="${q.id}_${opt.replace(/[^a-zA-Z0-9]/g, '_')}">${opt}</label>
               </div>`;
           });
 
@@ -276,29 +286,32 @@
     const checkedBoxes = Array.from(document.querySelectorAll(`input[name="${qId}"]:checked`)).map(el => el.value);
 
     if (isQ20) {
-      // 2.0: Si selecciona cualquier estándar, se habilita el adjunto
       box.style.display = checkedBoxes.length > 0 ? 'block' : 'none';
     } else if (isQ72) {
-      // 7.2: Redes de comunicación / Aplicaciones y Servicios Web / Base de Datos activan adjunto
       const validOptions = ["Redes de comunicación", "Aplicaciones y Servicios Web", "Base de Datos"];
       const hasValidSelection = checkedBoxes.some(val => validOptions.includes(val));
       box.style.display = hasValidSelection ? 'block' : 'none';
     } else {
-      // Regla General: "Si" activa la carga de soporte
       box.style.display = checkedBoxes.includes('Si') ? 'block' : 'none';
     }
   }
 
-  // Envío de Datos al Backend
+  // Envío Asíncrono mediante fetch() HTTP POST
   async function handleSubmit(e) {
     e.preventDefault();
     
+    if (APPS_SCRIPT_URL.includes("TU_WEB_APP_ID_AQUI")) {
+      alert("Por favor, edita el archivo index.html y coloca la URL real de tu Web App en la variable APPS_SCRIPT_URL.");
+      return;
+    }
+
     const btn = document.getElementById('btnSubmit');
     const spinner = document.getElementById('spinner');
     btn.disabled = true;
     spinner.classList.remove('d-none');
 
     const formData = {
+      fecha: document.getElementById('fecha').value,
       empresa: document.getElementById('empresa').value,
       nombre: document.getElementById('nombre').value,
       email: document.getElementById('email').value,
@@ -306,45 +319,57 @@
       files: {}
     };
 
-    for (const cat of questionnaire) {
-      for (const q of cat.questions) {
-        if (q.type === 'text') {
-          formData.responses[q.id] = document.getElementById(q.id).value;
-        } else {
-          const selected = Array.from(document.querySelectorAll(`input[name="${q.id}"]:checked`)).map(el => el.value);
-          formData.responses[q.id] = q.type === 'radio' ? (selected[0] || '') : selected;
+    try {
+      for (const cat of questionnaire) {
+        for (const q of cat.questions) {
+          if (q.type === 'text') {
+            formData.responses[q.id] = document.getElementById(q.id).value;
+          } else {
+            const selected = Array.from(document.querySelectorAll(`input[name="${q.id}"]:checked`)).map(el => el.value);
+            formData.responses[q.id] = q.type === 'radio' ? (selected[0] || '') : selected;
 
-          const box = document.getElementById(`file_box_${q.id}`);
-          if (box && box.style.display === 'block') {
-            const fileInput = document.getElementById(`file_${q.id}`);
-            if (fileInput && fileInput.files.length > 0) {
-              const file = fileInput.files[0];
-              const bytes = await readFileAsBase64(file);
-              formData.files[q.id] = {
-                name: file.name,
-                mimeType: file.type,
-                bytes: bytes
-              };
+            const box = document.getElementById(`file_box_${q.id}`);
+            if (box && box.style.display === 'block') {
+              const fileInput = document.getElementById(`file_${q.id}`);
+              if (fileInput && fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const bytes = await readFileAsBase64(file);
+                formData.files[q.id] = {
+                  name: file.name,
+                  mimeType: file.type,
+                  bytes: bytes
+                };
+              }
             }
           }
         }
       }
-    }
 
-    google.script.run
-      .withSuccessHandler(res => {
+      // Solicitud POST
+      const response = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(formData)
+      });
+
+      const res = await response.json();
+
+      if (res.status === 'SUCCESS') {
         alert(res.message);
         document.getElementById('dynamicForm').reset();
+        document.getElementById('fecha').valueAsDate = new Date();
         document.querySelectorAll('.file-upload-box').forEach(b => b.style.display = 'none');
-        btn.disabled = false;
-        spinner.classList.add('d-none');
-      })
-      .withFailureHandler(err => {
-        alert('Error: ' + err.message);
-        btn.disabled = false;
-        spinner.classList.add('d-none');
-      })
-      .processFormSubmission(formData);
+      } else {
+        alert('Error devuelto por la aplicación: ' + res.message);
+      }
+
+    } catch (error) {
+      alert('Error de comunicación con Google Apps Script: ' + error.message);
+    } finally {
+      btn.disabled = false;
+      spinner.classList.add('d-none');
+    }
   }
 
   function readFileAsBase64(file) {
